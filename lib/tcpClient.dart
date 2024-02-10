@@ -5,7 +5,9 @@ class P2PTCP {
   ServerSocket? _serverSocket;
   Socket? _clientSocket;
   final List<Socket> _connectedClients = [];
+  final _messageController = StreamController<String>.broadcast();
 
+  Stream<String> get messages => _messageController.stream;
   // Старт сервера
   Future<void> startServer({required int port}) async {
     _serverSocket = await ServerSocket.bind(InternetAddress.anyIPv4, port);
@@ -15,12 +17,16 @@ class P2PTCP {
 
   // Обробка підключення клієнта
   void _handleClientConnected(Socket client) {
-    print('Клієнт підключено: ${client.remoteAddress.address}:${client.remotePort}');
+    print('Клієнт підключено 1223: ${client.remoteAddress.address}:${client.remotePort}');
     _connectedClients.add(client);
     client.listen(
           (data) {
+        final message = String.fromCharCodes(data);
+
         print('Дані від клієнта ${client.remoteAddress.address}:${client.remotePort}: ${String.fromCharCodes(data)}');
         // Тут можна додати логіку обробки даних
+        _messageController.add(message); // Транслювати повідомлення через Stream
+
       },
       onError: (error) {
         print('Помилка: $error');
@@ -45,11 +51,11 @@ class P2PTCP {
         // Тут можна додати логіку обробки даних
       },
       onError: (error) {
-            _clientSocket!.close();
+        _clientSocket!.close();
       },
       onDone: () {
         print('Зєднання з сервером закрито');
-            _clientSocket!.close();
+        _clientSocket!.close();
       },
     );
   }
@@ -74,5 +80,6 @@ class P2PTCP {
     _connectedClients.clear();
     _serverSocket?.close();
     _clientSocket?.close();
+    _messageController.close();
   }
 }
